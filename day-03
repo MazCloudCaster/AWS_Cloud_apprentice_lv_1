@@ -1,0 +1,106 @@
+DAY 03 31/01/2026
+
+# EC2 Instance Creation Using Terraform (Amazon Linux 2023)
+
+This project explains how an Amazon EC2 instance was created using Terraform with Amazon Linux 2023, deployed in a public subnet and secured using a security group.
+
+# Overview
+
+Terraform was used as an Infrastructure as Code (IaC) tool to provision an EC2 instance on AWS. The configuration dynamically fetches the latest Amazon Linux 2023 AMI and launches the instance using a supported instance type.
+
+---
+
+# Steps Followed to Create the EC2 Instance
+
+- Configured the AWS provider in Terraform to connect to the desired AWS region
+- Used a Terraform **data source** to fetch the latest Amazon Linux 2023 AMI published by AWS
+- Applied filters to ensure the AMI matched:
+  - Amazon Linux 2023
+  - x86_64 architecture
+  - Available state
+- Created or referenced an existing **VPC**
+- Created or referenced a **public subnet**
+- Enabled automatic assignment of a **public IP address** for the EC2 instance
+- Defined a **security group** to control network access
+- Allowed inbound SSH (port 22) access in the security group
+- Allowed all outbound traffic from the instance
+- Selected a **Nitro-based instance type** compatible with Amazon Linux 2023 (`t3.micro`)
+- Associated the security group with the EC2 instance
+- Tagged the EC2 instance for easy identification
+
+---
+
+## Amazon Linux 2023 AMI Configuration
+
+- The AMI is fetched dynamically using Terraform
+
+data "aws_ami" "amazon_linux_2023" {
+  most_recent = true
+  owners      = ["amazon"] # Specifies aws root as the owner
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"] # Filters names starting with the pattern
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+- The most recent Amazon Linux 2023 image is selected automatically
+- This approach avoids hardcoding AMI IDs and ensures future updates are picked up
+
+---
+
+## Public Subnet Configuration
+
+- The EC2 instance is launched in a public subnet
+- The subnet has a route to an Internet Gateway
+- A public IP address is assigned to allow external access
+
+---
+
+## Security Group Configuration
+
+- Inbound rule:
+  - SSH (TCP port 22) allowed for remote access
+- Outbound rule:
+  - All traffic allowed to enable internet connectivity
+
+---
+
+## EC2 Instance Details
+
+- Operating System: Amazon Linux 2023
+- Instance Type: `t3.micro`
+- Network: Public subnet
+- Security: Attached security group with SSH access
+- Tags: Applied for resource identification and management
+
+resource "aws_instance" "my_amlinux" {
+  ami                         = data.aws_ami.amazon_linux_2023.id
+  instance_type               = "t3.micro"
+  subnet_id                   = aws_subnet.public_subnet_1a.id
+  associate_public_ip_address = true
+  vpc_security_group_ids      = [aws_security_group.my_main_sg.id]
+
+  tags = {
+    Name = "Main_Server"
+  }
+
+}
+
+---
+
+## Notes
+
+- Amazon Linux 2023 does not support legacy instance types such as `t2.micro`
+- Instance types must be Nitro-based
+- Security group rules should be restricted further for production environments
+- AMI availability varies by AWS region
